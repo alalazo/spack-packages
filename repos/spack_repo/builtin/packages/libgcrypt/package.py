@@ -46,6 +46,15 @@ class Libgcrypt(AutotoolsPackage):
     # Fixed upstream in 1.10.4
     patch("o_flag_munging-1.10.patch", when="@1.10.0:1.10.3")
 
+    def configure_args(self):
+        args = []
+        # Since 1.12.3 the aarch64 assembly does not build with Apple's assembler. MacPorts uses
+        # --disable-asm too:
+        # https://github.com/macports/macports-ports/blob/8949faaf0324208a6e920fa721a9576082c00fe1/devel/libgcrypt/Portfile
+        if self.spec.satisfies("@1.12.3: platform=darwin target=aarch64:"):
+            args.append("--disable-asm")
+        return args
+
     def check(self):
         # Without this hack, `make check` fails on macOS when SIP is enabled
         # https://bugs.gnupg.org/gnupg/issue2056
