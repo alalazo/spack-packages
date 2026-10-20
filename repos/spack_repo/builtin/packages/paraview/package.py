@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-import itertools
 import os
 import re
 import sys
@@ -247,12 +246,15 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
                 conflicts("cmake@:3.17", when=f"cuda_arch={_arch}")
 
         # We only support one single Architecture
-        for _arch, _other_arch in itertools.permutations(CudaPackage.cuda_arch_values, 2):
-            conflicts(
-                "cuda_arch={0}".format(_arch),
-                when="cuda_arch={0}".format(_other_arch),
-                msg="Paraview only accepts one architecture value",
-            )
+        variant(
+            "cuda_arch",
+            description="CUDA architecture",
+            values=("none", *CudaPackage.cuda_arch_values),
+            default="none",
+            multi=False,
+            sticky=True,
+            when="+cuda",
+        )
 
         # Dependencies for vendored VTK-m
         depends_on("hip@5.2:", when="+rocm")
@@ -621,16 +623,10 @@ class Paraview(CMakePackage, CudaPackage, ROCmPackage):
 
         # VTK-m expects cuda_arch to be the arch name vs. the arch version.
         if spec.satisfies("@5 +cuda"):
-            if spec["cmake"].satisfies("@3.18:"):
-                cmake_args.append(
-                    self.define(
-                        "CMAKE_CUDA_ARCHITECTURES", ";".join(spec.variants["cuda_arch"].value)
-                    )
-                )
+            requested_arch = spec.variants["cuda_arch"].value
+            if spec.satisfies("%cmake@3.18:"):
+                cmake_args.append(self.define("CMAKE_CUDA_ARCHITECTURES", requested_arch))
             else:
-                # ParaView/VTK-m only accepts one arch, default to first element
-                requested_arch = spec.variants["cuda_arch"].value[0]
-
                 if requested_arch == "none":
                     cuda_arch_value = "native"
                 else:
