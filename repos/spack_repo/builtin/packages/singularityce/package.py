@@ -242,3 +242,11 @@ class Singularityce(SingularityBase):
 
     depends_on("c", type="build")
     depends_on("go@1.26.8:", when="@4.6:")
+
+    # The bundled squashfuse needs at least one decompression library
+    with when("@4:"):
+        depends_on("zlib-api")
+        depends_on("lz4")
+        depends_on("lzo")
+        depends_on("xz")
+        depends_on("zstd")
